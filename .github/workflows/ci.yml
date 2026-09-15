@@ -19,7 +19,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt httpx pytest
-      - name: Run smoke tests
+      - name: Run smoke and communications tests
         env:
           OLYMPUS_JWT_SECRET: ci-test-secret-not-for-production
-        run: pytest -q tests/test_smoke.py
+        run: pytest -q tests/test_smoke.py tests/test_communications_campaigns.py
