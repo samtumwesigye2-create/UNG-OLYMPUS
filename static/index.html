@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>UNG-OLYMPUS</title>
+<style>
+  :root { --navy:#12263a; --steel:#315b7d; --light:#f4f7fa; --card:#fff; --green:#1d7a4a; --amber:#b87500; --red:#a22; --grey:#667; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background:var(--light); color:#17212b; }
+  header { background:var(--navy); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; }
+  header .brand { font-weight:700; letter-spacing:.08em; }
+  header .brand small { font-weight:400; letter-spacing:0; opacity:.75; margin-left:10px; }
+  header .who { font-size:12px; opacity:.9; }
+  nav { background:#fff; border-bottom:1px solid #dbe3ea; padding:0 18px; display:flex; gap:4px; }
+  nav button { border:0; background:transparent; padding:12px 14px; cursor:pointer; color:#345; border-bottom:3px solid transparent; }
+  nav button.active { color:var(--navy); border-bottom-color:var(--steel); font-weight:600; }
+  main { padding:18px; max-width:1200px; margin:auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid #dde5ec; border-radius:8px; padding:14px; box-shadow:0 1px 2px #00000008; }
+  .card h3 { margin:0 0 10px; font-size:15px; color:var(--navy); }
+  .badge { display:inline-block; border-radius:999px; padding:2px 8px; font-size:10px; font-weight:700; }
+  .ok { background:#dff3e8; color:var(--green); }
+  .warn { background:#fff0d3; color:var(--amber); }
+  .bad { background:#f9dddd; color:var(--red); }
+  .info { background:#e4edf5; color:var(--steel); }
+  .metric { display:flex; justify-content:space-between; font-size:12px; margin:5px 0; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { padding:8px; border-bottom:1px solid #e8edf2; text-align:left; vertical-align:top; }
+  th { color:var(--grey); font-weight:600; }
+  input, select { padding:7px 9px; border:1px solid #ccc; border-radius:5px; font-size:13px; width:100%; }
+  label { font-size:12px; color:var(--grey); display:block; margin:8px 0 3px; }
+  button.primary { background:var(--navy); color:#fff; border:none; padding:9px 16px; border-radius:5px; cursor:pointer; font-size:13px; margin-top:12px; }
+  button.primary:hover { background:var(--steel); }
+  .err { color:var(--red); font-size:13px; margin-top:8px; }
+  .muted { color:var(--grey); font-size:12px; }
+  #login-screen { max-width:360px; margin:80px auto; }
+  .hidden { display:none !important; }
+  .source-tag { font-size:10px; text-transform:uppercase; color:var(--grey); }
+</style>
+</head>
+<body>
+<div id="login-screen"><div class="card"><h3>UNG-OLYMPUS — Sign in</h3><label>Email</label><input id="login-email" type="email" placeholder="you@ung.local" /><label>Password</label><input id="login-password" type="password" /><label>MFA code (commanders / domain controllers)</label><input id="login-totp" placeholder="6-digit code" /><label>...or a backup code, if you've lost your authenticator</label><input id="login-backup" placeholder="xxxxxxxx-xxxxxxxx" /><button class="primary" onclick="doLogin()">Sign in</button><div id="login-err" class="err"></div></div></div>
+<div id="app" class="hidden"><header><div class="brand">UNG-OLYMPUS <small>Unified Command &amp; Control — Phase 1</small></div><div class="who"><span id="who-email"></span> (<span id="who-role"></span>) &nbsp; <a href="#" style="color:#fff" onclick="logout()">Sign out</a></div></header><nav><button data-tab="cop" class="active" onclick="showTab('cop')">Operating Picture</button><button data-tab="logistics" onclick="showTab('logistics')">Logistics</button><button data-tab="timeline" onclick="showTab('timeline')">Timeline</button><button data-tab="admin" id="admin-tab-btn" onclick="showTab('admin')">Admin</button></nav><main>
+<section id="tab-cop"><div class="card"><h3>Common Operating Picture <button class="primary" style="float:right;margin-top:-4px" onclick="refreshAlerts()">Refresh alerts</button></h3><div id="cop-grid" class="grid"></div></div><div class="card"><h3>Active alerts</h3><table><thead><tr><th>Domain</th><th>Rule</th><th>Summary</th><th>Correlated with</th><th>When</th><th></th></tr></thead><tbody id="alerts-body"></tbody></table></div></section>
+<section id="tab-logistics" class="hidden"><div class="card"><h3>Issue a directive</h3><label>Subsystem</label><select id="d-subsystem"><option value="MERCURY">MERCURY</option><option value="VECTOR">VECTOR</option></select><label>Action</label><input id="d-action" placeholder="e.g. reroute_shipment" /><label>Payload (JSON)</label><input id="d-payload" placeholder='{"shipment_id": "123"}' /><label style="display:flex;align-items:center;gap:6px;margin-top:10px"><input type="checkbox" id="d-sensitive" style="width:auto" /> Sensitive — require a second person's approval before this is sent</label><button class="primary" onclick="issueDirective()">Send directive</button><div id="directive-result" class="muted" style="margin-top:8px"></div></div><div class="card"><h3>Recent directives</h3><table><thead><tr><th>Subsystem</th><th>Action</th><th>Status</th><th>Ack</th><th>Issued by</th><th></th></tr></thead><tbody id="directives-body"></tbody></table></div></section>
+<section id="tab-timeline" class="hidden"><div class="card"><h3>Cross-domain event timeline</h3><table><thead><tr><th>Domain</th><th>Type</th><th>Summary</th><th>Actor</th><th>When</th></tr></thead><tbody id="events-body"></tbody></table></div></section>
+<section id="tab-admin" class="hidden"><div class="card"><h3>Create user</h3><label>Email</label><input id="u-email" /><label>Password</label><input id="u-password" type="password" /><label>Role</label><select id="u-role"><option>analyst</option><option>domain_controller</option><option>integrator</option><option>commander</option></select><label>Domains (comma separated: defense,emergency,logistics,itinfra)</label><input id="u-domains" placeholder="logistics" /><button class="primary" onclick="createUser()">Create</button><div id="user-result" class="muted" style="margin-top:8px"></div></div><div class="card"><h3>Users</h3><table><thead><tr><th>Email</th><th>Role</th><th>Domains</th><th>MFA</th></tr></thead><tbody id="users-body"></tbody></table></div></section>
+</main></div>
+<script>
+let TOKEN=localStorage.getItem("olympus_token")||null; let ROLE=null,EMAIL=null;
+function authHeaders(){return{"Authorization":"Bearer "+TOKEN,"Content-Type":"application/json"};}
+async function doLogin(){const email=document.getElementById("login-email").value,password=document.getElementById("login-password").value,totp_code=document.getElementById("login-totp").value||null,backup_code=document.getElementById("login-backup").value||null;document.getElementById("login-err").textContent="";try{const r=await fetch("/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,totp_code,backup_code})});const data=await r.json();if(!r.ok){document.getElementById("login-err").textContent=data.detail||"Login failed";return;}TOKEN=data.access_token;ROLE=data.role;EMAIL=email;localStorage.setItem("olympus_token",TOKEN);enterApp();}catch(e){document.getElementById("login-err").textContent="Could not reach server";}}
+function logout(){TOKEN=null;localStorage.removeItem("olympus_token");location.reload();}
+function enterApp(){document.getElementById("login-screen").classList.add("hidden");document.getElementById("app").classList.remove("hidden");document.getElementById("who-email").textContent=EMAIL||"";document.getElementById("who-role").textContent=ROLE||"";if(ROLE!=="commander")document.getElementById("admin-tab-btn").classList.add("hidden");loadCOP();loadAlerts();}
+function showTab(tab){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));["cop","logistics","timeline","admin"].forEach(t=>document.getElementById("tab-"+t).classList.toggle("hidden",t!==tab));if(tab==="logistics")loadDirectives();if(tab==="timeline")loadEvents();if(tab==="admin")loadUsers();}
+function healthBadge(healthy){return healthy?'<span class="badge ok">HEALTHY</span>':'<span class="badge warn">ATTENTION</span>';}
+async function loadCOP(){const r=await fetch("/cop",{headers:authHeaders()});if(r.status===401)return logout();const data=await r.json(),grid=document.getElementById("cop-grid");grid.innerHTML="";data.domains.forEach(d=>{const div=document.createElement("div");div.className="card";if(!d.integrated)div.innerHTML=`<h3>${d.label} <span class="badge info">PHASE ${d.phase}</span></h3><p class="muted">${d.message}</p>`;else{let subsHtml=d.subsystems.map(s=>`<div style="margin-bottom:8px"><strong>${s.subsystem}</strong> ${healthBadge(s.healthy)} <span class="source-tag">${s.source}</span><div class="metric"><span>${s.summary}</span></div></div>`).join("");div.innerHTML=`<h3>${d.label} ${healthBadge(d.healthy)}</h3>${subsHtml}`;}grid.appendChild(div);});}
+async function loadAlerts(){const r=await fetch("/alerts",{headers:authHeaders()});if(!r.ok)return;const data=await r.json();document.getElementById("alerts-body").innerHTML=data.alerts.map(a=>`<tr><td>${a.domain}</td><td>${a.rule}</td><td>${a.summary}</td><td>${a.correlated_domains||"—"}</td><td>${new Date(a.created_at*1000).toLocaleString()}</td><td><button class="primary" style="margin:0;padding:4px 10px" onclick="resolveAlert(${a.id})">Resolve</button></td></tr>`).join("")||'<tr><td colspan="6" class="muted">No active alerts</td></tr>';}
+async function resolveAlert(id){await fetch(`/alerts/${id}/resolve`,{method:"POST",headers:authHeaders()});loadAlerts();}
+async function refreshAlerts(){await fetch("/alerts/refresh",{method:"POST",headers:authHeaders()});loadCOP();loadAlerts();}
+async function issueDirective(){const subsystem=document.getElementById("d-subsystem").value,action=document.getElementById("d-action").value,sensitive=document.getElementById("d-sensitive").checked;let payload={};try{payload=JSON.parse(document.getElementById("d-payload").value||"{}");}catch(e){alert("Payload must be valid JSON");return;}const r=await fetch("/directives",{method:"POST",headers:authHeaders(),body:JSON.stringify({domain:"logistics",subsystem,action,payload,sensitive})}),data=await r.json();document.getElementById("directive-result").textContent=r.ok?`#${data.id} → ${data.status}: ${data.ack_message}`:(data.detail||"Failed");loadDirectives();loadCOP();}
+async function loadDirectives(){const r=await fetch("/directives",{headers:authHeaders()}),data=await r.json();document.getElementById("directives-body").innerHTML=data.directives.map(d=>`<tr><td>${d.subsystem}</td><td>${d.action}</td><td>${d.status}</td><td>${d.subsystem_ack||"—"}</td><td>${d.issued_by}</td><td>${d.status==="pending_approval"&&d.issued_by!==EMAIL?`<button class="primary" style="margin:0;padding:4px 10px" onclick="approveDirective(${d.id})">Approve</button>`:""}</td></tr>`).join("")||'<tr><td colspan="6" class="muted">No directives yet</td></tr>';}
+async function approveDirective(id){const r=await fetch(`/directives/${id}/approve`,{method:"POST",headers:authHeaders()}),data=await r.json();if(!r.ok)alert(data.detail||"Could not approve");loadDirectives();loadCOP();}
+async function loadEvents(){const r=await fetch("/events",{headers:authHeaders()}),data=await r.json();document.getElementById("events-body").innerHTML=data.events.map(e=>`<tr><td>${e.domain}</td><td>${e.event_type}</td><td>${e.summary}</td><td>${e.actor_email||"—"}</td><td>${new Date(e.occurred_at*1000).toLocaleString()}</td></tr>`).join("")||'<tr><td colspan="5" class="muted">No events yet</td></tr>';}
+async function createUser(){const email=document.getElementById("u-email").value,password=document.getElementById("u-password").value,role=document.getElementById("u-role").value,domains=document.getElementById("u-domains").value.split(",").map(s=>s.trim()).filter(Boolean);const r=await fetch("/users",{method:"POST",headers:authHeaders(),body:JSON.stringify({email,password,role,domains})}),data=await r.json();document.getElementById("user-result").textContent=r.ok?`Created ${data.email}`:(data.detail||"Failed");loadUsers();}
+async function loadUsers(){const r=await fetch("/users",{headers:authHeaders()});if(!r.ok)return;const data=await r.json();document.getElementById("users-body").innerHTML=data.users.map(u=>`<tr><td>${u.email}</td><td>${u.role}</td><td>${u.domains.join(", ")}</td><td>${u.mfa_enabled?"on":"off"}</td></tr>`).join("");}
+function decodeJwtPayload(token){try{const b64=token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");return JSON.parse(atob(b64+"===".slice((b64.length+3)%4)));}catch(e){return null;}}
+if(TOKEN){const payload=decodeJwtPayload(TOKEN);if(payload&&payload.exp*1000>Date.now()){ROLE=payload.role;EMAIL=payload.sub;enterApp();}else{localStorage.removeItem("olympus_token");}}
+</script>
+</body>
+</html>
